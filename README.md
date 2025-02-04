@@ -1,6 +1,6 @@
 # OS Security Risk Assessment Tool 🛡️
 
-An automated security risk assessment tool for analyzing operating system vulnerabilities, patch statuses, and end-of-life risks.
+An automated security assessment tool for analyzing operating system vulnerabilities, patch statuses, and end-of-life risks.
 
 [![Python](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -39,8 +39,11 @@ cp config.example.ini config.ini
 
 ## ⚙️ Configuration
 
-Edit `config.ini` to customize your assessment:
+Edit `config.ini` to customize your assessment. Pay special attention to CPE names and validation rules as they are crucial for accurate vulnerability matching.
 
+### Required Configuration Sections
+
+#### Basic Configuration
 ```ini
 [API]
 api_key = your_nvd_api_key
@@ -59,6 +62,40 @@ kev_status = 0.20
 patch_availability = 0.15
 eol_status = 0.15
 latest_patch = 0.05
+```
+
+#### CPE Names Configuration
+CPE (Common Platform Enumeration) names are critical for accurate CVE matching. Add them to the config.ini:
+
+```ini
+[CPENames]
+CentOS Linux 7.9 = cpe:2.3:o:centos:centos:7.9:*:*:*:*:*:x64:*
+Ubuntu 22.x LTS = cpe:2.3:o:canonical:ubuntu_linux:22:*:*:*:*:*:*:*
+Windows Server 2022 = cpe:2.3:o:microsoft:windows_server_2022:-:*:*:*:*:*:*:*
+```
+
+Tips for CPE configuration:
+- Use official CPE names from the NVD database
+- Include version-specific information
+- Follow the CPE 2.3 format
+- Test CPE strings with NVD's CPE dictionary
+
+#### Validation Rules
+Validation rules help filter relevant vulnerabilities. Configure them in config.ini:
+
+```ini
+[ValidationRules]
+CentOS Linux 7.9 = centos,linux,7.9
+Ubuntu 22.x LTS = ubuntu,linux,22
+Windows Server 2022 = windows,server,2022
+```
+
+Validation rules guidelines:
+- Use lowercase keywords
+- Include OS-specific terms
+- Separate keywords with commas
+- Include version numbers when relevant
+- Test with common vulnerability patterns
 ```
 
 ## 📊 Risk Scoring Matrix
