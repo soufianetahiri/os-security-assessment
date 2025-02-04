@@ -96,7 +96,7 @@ Validation rules guidelines:
 - Separate keywords with commas
 - Include version numbers when relevant
 - Test with common vulnerability patterns
-```
+
 
 ## 📊 Risk Scoring Matrix
 
