@@ -1,6 +1,6 @@
 # OS Security Risk Assessment Tool 🛡️
 
-An automated security assessment tool for analyzing operating system vulnerabilities, patch statuses, and end-of-life risks.
+An automated security risk assessment tool for analyzing operating system vulnerabilities, patch statuses, and end-of-life risks.
 
 [![Python](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
