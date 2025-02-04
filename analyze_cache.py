@@ -244,64 +244,86 @@ class OSRiskAssessment:
         start_index = 0
         total_results = None
         pbar = None
+        error_count = 0  # Track consecutive errors
 
         try:
             while total_results is None or start_index < total_results:
-                params = {
-                    'virtualMatchString': cpe,
-                    'resultsPerPage': 50,
-                    'startIndex': start_index
-                }
+                try:
+                    params = {
+                        'virtualMatchString': cpe,
+                        'resultsPerPage': 50,
+                        'startIndex': start_index
+                    }
 
-                response = requests.get(
-                    self.nvd_base_url,
-                    headers=self.headers,
-                    params=params
-                )
+                    response = requests.get(
+                        self.nvd_base_url,
+                        headers=self.headers,
+                        params=params
+                    )
 
-                if response.status_code in (429, 503):
-                    self.logger.warning("Rate limit reached, waiting 30 seconds...")
-                    time.sleep(30)
-                    continue
+                    if response.status_code in (429, 503):
+                        self.logger.warning("Rate limit reached, waiting 30 seconds...")
+                        time.sleep(30)
+                        continue
 
-                if response.status_code != 200:
-                    self.logger.error(f"Error fetching CVEs: {response.status_code}")
-                    break
+                    if response.status_code != 200:
+                        self.logger.error(f"Error fetching CVEs: {response.status_code}")
+                        error_count += 1
+                        if error_count >= 3:  # Break after 3 consecutive errors
+                            break
+                        continue
 
-                data = response.json()
+                    try:
+                        data = response.json()
+                    except json.JSONDecodeError as e:
+                        self.logger.error(f"JSON parsing error for {os_name}: {str(e)}")
+                        error_count += 1
+                        if error_count >= 3:
+                            break
+                        continue
 
-                if total_results is None:
-                    total_results = data.get('totalResults', 0)
-                    self.logger.info(f"Total CVEs found for {os_name}: {total_results}")
-                    if total_results > 0:
-                        pbar = tqdm(total=total_results, desc=f"Fetching CVEs for {os_name}", unit="CVE")
+                    if total_results is None:
+                        total_results = data.get('totalResults', 0)
+                        self.logger.info(f"Total CVEs found for {os_name}: {total_results}")
+                        if total_results > 0:
+                            pbar = tqdm(total=total_results, desc=f"Fetching CVEs for {os_name}", unit="CVE")
 
-                vulnerabilities = data.get('vulnerabilities', [])
-                current_batch = len(vulnerabilities)
-                all_cves.extend(vulnerabilities)
+                    vulnerabilities = data.get('vulnerabilities', [])
+                    current_batch = len(vulnerabilities)
+                    all_cves.extend(vulnerabilities)
+                    error_count = 0  # Reset error count on successful fetch
 
-                if pbar:
-                    pbar.update(current_batch)
-                    progress_percentage = (len(all_cves) / total_results) * 100
-                    self.logger.info(f"Progress for {os_name}: {len(all_cves)}/{total_results} CVEs retrieved ({progress_percentage:.1f}%)")
-
-                start_index += current_batch
-
-                if current_batch < 50:
                     if pbar:
-                        pbar.close()
-                    break
+                        pbar.update(current_batch)
+                        progress_percentage = (len(all_cves) / total_results) * 100 if total_results else 0
+                        self.logger.info(f"Progress for {os_name}: {len(all_cves)}/{total_results} CVEs retrieved ({progress_percentage:.1f}%)")
 
-                time.sleep(0.6)
+                    start_index += current_batch
 
-            self.logger.info(f"CVE retrieval complete for {os_name}. Total CVEs retrieved: {len(all_cves)}")
-            return all_cves
+                    if current_batch < 50:
+                        break
+
+                    time.sleep(0.6)
+
+                except Exception as e:
+                    self.logger.error(f"Error processing batch for {os_name}: {str(e)}")
+                    error_count += 1
+                    if error_count >= 3:
+                        break
+                    continue
 
         except Exception as e:
             self.logger.error(f"Error retrieving CVEs for {os_name}: {str(e)}")
+        finally:
             if pbar:
                 pbar.close()
-            return []
+            
+            if all_cves:
+                self.logger.info(f"Successfully retrieved {len(all_cves)} CVEs for {os_name} despite any errors")
+            else:
+                self.logger.warning(f"No CVEs were retrieved for {os_name}")
+                
+        return all_cves
     
     def validate_cve_for_os(self, cve: Dict, os_name: str) -> bool:
         """
@@ -382,17 +404,17 @@ class OSRiskAssessment:
         else:
             self.logger.info(f"Fetching fresh CVE data for {os_name}...")
             raw_cves = self._fetch_nvd_cves(os_name)
-            
+                
         total_cves = len(raw_cves)
         self.logger.info(f"Processing and validating {total_cves} CVEs...")
         
         with tqdm(total=total_cves, desc=f"Validating CVEs for {os_name}", unit="CVE") as pbar:
             for cve in raw_cves:
                 try:
-                    if 'cve' not in cve:
-                        self.logger.debug("Skipping malformed CVE data: missing 'cve' key")
+                    if not isinstance(cve, dict) or 'cve' not in cve:
+                        self.logger.debug("Skipping malformed CVE data: missing 'cve' key or invalid format")
                         continue
-                        
+                            
                     if self.validate_cve_for_os(cve, os_name):
                         validated_cves.append(cve)
                     else:
@@ -404,7 +426,7 @@ class OSRiskAssessment:
 
         if not self._is_cache_valid(cache_path) and validated_cves:
             self._save_to_cache(cache_path, validated_cves)
-            
+                
         validation_ratio = (len(validated_cves) / total_cves * 100) if total_cves > 0 else 0
         self.logger.info(
             f"CVE validation complete for {os_name}:\n"
