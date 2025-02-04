@@ -155,6 +155,10 @@ The Excel report includes:
 - End-of-life dates
 - Color-coded risk scores
 
+### Output example
+![image](https://github.com/user-attachments/assets/6b536121-929c-4e0f-8567-47ca2fe9155b)
+
+
 ## 🗄️ Cache Management
 
 - CVE data cached for configured duration
