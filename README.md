@@ -193,6 +193,7 @@ Distributed under the MIT License. See `LICENSE` for more information.
 ## ⚠️ Disclaimer
 
 This tool is provided as-is for security assessment purposes. Always verify results and consult security professionals for critical systems.
+AI generated 90% of the code and the readme.
 
 ## 📚 Dependencies
 
